@@ -1,0 +1,286 @@
+"""Handlers for user interactions."""
+
+from typing import Optional
+from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram.ext import ContextTypes, ConversationHandler
+
+from database import Database
+from config import UserStatus, PaymentStatus, ADMIN_CHAT_ID
+from models import UserModel
+from utils import MessageFormatter, JalaliCalendar
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Conversation states
+PIN_CODE = 0
+VERIFICATION = 1
+MAIN_MENU = 2
+
+db = Database()
+
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Start command handler."""
+    user = update.effective_user
+    telegram_id = user.id
+
+    # Check if user already verified
+    existing_user = db.get_user_by_telegram_id(telegram_id)
+    if existing_user:
+        if existing_user["status"] == UserStatus.VERIFIED:
+            await show_main_menu(update, context)
+            return MAIN_MENU
+        elif existing_user["status"] == UserStatus.PENDING_ADMIN:
+            await update.message.reply_text(
+                "حساب شما در انتظار تأیید مدیر است.\nلطفا بعداً دوباره تلاش کنید."
+            )
+            return ConversationHandler.END
+
+    # Request PIN code
+    await update.message.reply_text(MessageFormatter.format_pin_request())
+    return PIN_CODE
+
+
+async def handle_pin_code(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    """Handle PIN code input."""
+    pin_code = update.message.text.strip()
+
+    # Validate pin code
+    user = db.get_user_by_pin(pin_code)
+    if not user:
+        await update.message.reply_text(MessageFormatter.format_invalid_pin())
+        return PIN_CODE
+
+    # Store user data in context
+    context.user_data["user_pin"] = pin_code
+    context.user_data["user_id"] = user["id"]
+    context.user_data["full_name"] = user["full_name"]
+    context.user_data["donation_link"] = user["donation_link"]
+    context.user_data["donation_amount"] = user["donation_amount"]
+
+    # Request verification
+    verification_msg = MessageFormatter.format_verification_request(user["full_name"])
+    reply_keyboard = [["بله", "خیر"]]
+    await update.message.reply_text(
+        verification_msg,
+        reply_markup=ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard=True, resize_keyboard=True
+        ),
+    )
+    return VERIFICATION
+
+
+async def handle_verification(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    """Handle user verification."""
+    response = update.message.text.strip()
+
+    if response == "بله":
+        user_id = context.user_data["user_id"]
+        telegram_id = update.effective_user.id
+        full_name = context.user_data["full_name"]
+
+        # Update user with Telegram ID
+        db.update_user_telegram_id(user_id, telegram_id, UserStatus.VERIFIED)
+
+        # Send success message
+        success_msg = MessageFormatter.format_success_message(
+            context.user_data["donation_link"], context.user_data["donation_amount"]
+        )
+        await update.message.reply_text(
+            success_msg, reply_markup=ReplyKeyboardRemove()
+        )
+
+        # Show main menu
+        await show_main_menu(update, context)
+        return MAIN_MENU
+
+    elif response == "خیر":
+        # Reset and ask for PIN again
+        await update.message.reply_text(
+            MessageFormatter.format_pin_request(),
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return PIN_CODE
+
+    return VERIFICATION
+
+
+async def show_main_menu(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    """Show main menu."""
+    menu_text = (
+        "منوی اصلی:\n\n"
+        "/کارت - شماره کارت خیریه\n"
+        "/لینک - لینک پرداخت\n"
+        "/مبلغ - مبلغ تعهدی من\n"
+        "/آپلود - آپلود فیش واریزی\n"
+        "/سابقه - سابقه پرداخت‌های من\n"
+        "/گزارش - آخرین گزارش خیریه"
+    )
+    reply_keyboard = [
+        ["/کارت", "/لینک"],
+        ["/مبلغ", "/آپلود"],
+        ["/سابقه", "/گزارش"],
+    ]
+    await update.message.reply_text(
+        menu_text,
+        reply_markup=ReplyKeyboardMarkup(
+            reply_keyboard, resize_keyboard=True, selective=True
+        ),
+    )
+    return MAIN_MENU
+
+
+async def handle_card_number(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Handle card number request."""
+    card_number = "۶۲۲۱۰۶۱۲۳۷۷۵۷۰۸۵"
+    await update.message.reply_text(
+        f"شماره کارت خیریه (با لمس کردن کپی می شود):\n`{card_number}`",
+        parse_mode="Markdown",
+    )
+
+
+async def handle_donation_link(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Handle donation link request."""
+    telegram_id = update.effective_user.id
+    user = db.get_user_by_telegram_id(telegram_id)
+
+    if user:
+        await update.message.reply_text(
+            f"لینک پرداخت شما:\n{user['donation_link']}"
+        )
+    else:
+        await update.message.reply_text("کاربری یافت نشد.")
+
+
+async def handle_donation_amount(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Handle donation amount request."""
+    telegram_id = update.effective_user.id
+    user = db.get_user_by_telegram_id(telegram_id)
+
+    if user:
+        await update.message.reply_text(
+            f"مبلغ تعهدی شما: {user['donation_amount']} تومان"
+        )
+    else:
+        await update.message.reply_text("کاربری یافت نشد.")
+
+
+async def handle_payment_upload(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Handle payment image upload."""
+    telegram_id = update.effective_user.id
+    user = db.get_user_by_telegram_id(telegram_id)
+
+    if not user:
+        await update.message.reply_text("کاربری یافت نشد.")
+        return
+
+    if not update.message.photo:
+        await update.message.reply_text("لطفا یک تصویر ارسال کنید.")
+        return
+
+    # Get the highest quality photo
+    photo = update.message.photo[-1]
+    file = await context.bot.get_file(photo.file_id)
+
+    # Save photo
+    file_path = f"payments/{user['id']}_{photo.file_id}.jpg"
+    await file.download_to_drive(file_path)
+
+    # Create payment record
+    j_m, j_y = JalaliCalendar.get_current_jalali_month_year()
+    payment_id = db.create_payment(user["id"], j_m, j_y, PaymentStatus.PENDING)
+
+    # Notify admin
+    admin_msg = (
+        f"پرداخت جدید برای تأیید:\n\n"
+        f"نام: {user['full_name']}\n"
+        f"مبلغ: {user['donation_amount']}\n"
+        f"شناسه پرداخت: {payment_id}"
+    )
+
+    await context.bot.send_message(ADMIN_CHAT_ID, admin_msg)
+    await context.bot.send_photo(ADMIN_CHAT_ID, photo.file_id)
+
+    # Add inline buttons for admin approval
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+    keyboard = [
+        [
+            InlineKeyboardButton("تأیید", callback_data=f"approve_{payment_id}"),
+            InlineKeyboardButton("رد کردن", callback_data=f"deny_{payment_id}"),
+        ]
+    ]
+    await context.bot.send_message(
+        ADMIN_CHAT_ID,
+        "لطفا تصویر را تأیید یا رد کنید:",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+    await update.message.reply_text(
+        "تصویر شما با موفقیت ارسال شد.\nانتظار تأیید مدیر..."
+    )
+
+
+async def handle_payment_history(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Handle payment history request."""
+    telegram_id = update.effective_user.id
+    user = db.get_user_by_telegram_id(telegram_id)
+
+    if not user:
+        await update.message.reply_text("کاربری یافت نشد.")
+        return
+
+    # Get payment history
+    cursor = db.conn.cursor()
+    cursor.execute(
+        """
+        SELECT jalali_month, jalali_year, status FROM payments
+        WHERE user_id = ?
+        ORDER BY jalali_year DESC, jalali_month DESC
+        """,
+        (user["id"],),
+    )
+    payments = cursor.fetchall()
+
+    if not payments:
+        await update.message.reply_text("سابقه‌ای برای شما وجود ندارد.")
+        return
+
+    history_text = "سابقه پرداخت‌های من:\n\n"
+    for payment in payments:
+        month_name = JalaliCalendar.format_jalali_date(payment[1], payment[0], 1)
+        status_text = {
+            PaymentStatus.APPROVED: "✅ تأیید شده",
+            PaymentStatus.PENDING: "⏳ در انتظار",
+            PaymentStatus.FAILED: "❌ رد شده",
+        }.get(payment[2], "نامشخص")
+
+        history_text += f"{month_name}: {status_text}\n"
+
+    await update.message.reply_text(history_text)
+
+
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Cancel handler."""
+    await update.message.reply_text(
+        "عملیات لغو شد.",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    return ConversationHandler.END

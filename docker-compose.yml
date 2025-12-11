@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    container_name: aharar_bot
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN}
+      ADMIN_CHAT_ID: ${ADMIN_CHAT_ID}
+      DATABASE_PATH: /app/aharar_bot.db
+      SEED_DATA_PATH: /app/data/seed_data.csv
+      TIMEZONE: Asia/Tehran
+    volumes:
+      - ./aharar_bot.db:/app/aharar_bot.db
+      - ./data:/app/data
+      - ./payments:/app/payments
+      - ./reports:/app/reports
+    restart: unless-stopped
+    networks:
+      - aharar_network
+
+  sqlite_viewer:
+    image: coleifer/sqlite-web
+    container_name: aharar_sqlite_viewer
+    environment:
+      DATABASE: /app/aharar_bot.db
+    volumes:
+      - ./aharar_bot.db:/app/aharar_bot.db:ro
+    ports:
+      - "8080:8080"
+    depends_on:
+      - bot
+    networks:
+      - aharar_network
+
+networks:
+  aharar_network:
+    driver: bridge
