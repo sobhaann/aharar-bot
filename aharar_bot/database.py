@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional
 import csv
 
-from config import DATABASE_PATH, SEED_DATA_PATH, PaymentStatus, UserStatus
+from .config import DATABASE_PATH, SEED_DATA_PATH, PaymentStatus, UserStatus
 
 
 class Database:

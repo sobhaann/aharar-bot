@@ -1,38 +1,46 @@
-version: '3.8'
+version: "3.9"
 
 services:
   bot:
-    build: .
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
     container_name: aharar_bot
+    env_file: .env
     environment:
-      BOT_TOKEN: ${BOT_TOKEN}
-      ADMIN_CHAT_ID: ${ADMIN_CHAT_ID}
-      DATABASE_PATH: /app/aharar_bot.db
-      SEED_DATA_PATH: /app/data/seed_data.csv
-      TIMEZONE: Asia/Tehran
+      - DATABASE_PATH=/data/aharar_bot.db
+      - SEED_DATA_PATH=/data/seed_data.csv
+      - TIMEZONE=Asia/Tehran
     volumes:
-      - ./aharar_bot.db:/app/aharar_bot.db
-      - ./data:/app/data
+      - ./data:/data
       - ./payments:/app/payments
       - ./reports:/app/reports
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import os,sqlite3; db=os.getenv(\"DATABASE_PATH\",\"/data/aharar_bot.db\"); os.makedirs(os.path.dirname(db), exist_ok=True); sqlite3.connect(db).close()'"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
     networks:
       - aharar_network
 
   sqlite_viewer:
-    image: coleifer/sqlite-web
+    image: coleifer/sqlite-web:latest
     container_name: aharar_sqlite_viewer
+    env_file: .env
     environment:
-      DATABASE: /app/aharar_bot.db
+      - SQLITE_DATABASES=/data/aharar_bot.db
     volumes:
-      - ./aharar_bot.db:/app/aharar_bot.db:ro
+      - ./data:/data:ro
     ports:
       - "8080:8080"
     depends_on:
       - bot
+    restart: unless-stopped
     networks:
       - aharar_network
 
 networks:
   aharar_network:
     driver: bridge
+

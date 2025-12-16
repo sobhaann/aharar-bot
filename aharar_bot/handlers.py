@@ -4,10 +4,10 @@ from typing import Optional
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler
 
-from database import Database
-from config import UserStatus, PaymentStatus, ADMIN_CHAT_ID
-from models import UserModel
-from utils import MessageFormatter, JalaliCalendar
+from .database import Database
+from .config import UserStatus, PaymentStatus, ADMIN_CHAT_ID
+from .models import UserModel
+from .utils import MessageFormatter, JalaliCalendar
 import logging
 
 logger = logging.getLogger(__name__)
@@ -116,17 +116,16 @@ async def show_main_menu(
     """Show main menu."""
     menu_text = (
         "منوی اصلی:\n\n"
-        "/کارت - شماره کارت خیریه\n"
-        "/لینک - لینک پرداخت\n"
-        "/مبلغ - مبلغ تعهدی من\n"
-        "/آپلود - آپلود فیش واریزی\n"
-        "/سابقه - سابقه پرداخت‌های من\n"
-        "/گزارش - آخرین گزارش خیریه"
+        "/card - شماره کارت خیریه\n"
+        "/link - لینک پرداخت\n"
+        "/amount - مبلغ تعهدی من\n"
+        "/upload - آپلود فیش واریزی\n"
+        "/history - سابقه پرداخت‌های من"
     )
     reply_keyboard = [
-        ["/کارت", "/لینک"],
-        ["/مبلغ", "/آپلود"],
-        ["/سابقه", "/گزارش"],
+        ["کارت", "لینک"],
+        ["مبلغ", "آپلود"],
+        ["سابقه"],
     ]
     await update.message.reply_text(
         menu_text,

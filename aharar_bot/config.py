@@ -8,6 +8,7 @@ BOT_TOKEN: Final[str] = os.getenv("BOT_TOKEN", "your_bot_token_here")
 ADMIN_CHAT_ID: Final[int] = int(os.getenv("ADMIN_CHAT_ID", "0"))
 ADMIN_USERNAME: Final[str] = "@Ahrarcharity_admin"
 
+
 # Database Configuration
 DATABASE_PATH: Final[str] = os.getenv("DATABASE_PATH", "aharar_bot.db")
 SEED_DATA_PATH: Final[str] = os.getenv("SEED_DATA_PATH", "./data/seed_data.csv")

@@ -3,7 +3,7 @@
 from datetime import datetime
 import pytz
 
-from config import TIMEZONE, JALALI_MONTHS
+from .config import TIMEZONE, JALALI_MONTHS
 
 
 class JalaliCalendar:

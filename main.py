@@ -15,8 +15,8 @@ from telegram.ext import ContextTypes
 import pytz
 from datetime import time
 
-from config import BOT_TOKEN, TIMEZONE
-from handlers import (
+from aharar_bot.config import BOT_TOKEN, TIMEZONE
+from aharar_bot.handlers import (
     start,
     handle_pin_code,
     handle_verification,
@@ -31,7 +31,7 @@ from handlers import (
     VERIFICATION,
     MAIN_MENU,
 )
-from scheduler import (
+from aharar_bot.scheduler import (
     send_donation_notification,
     send_reminder_notification,
     send_monthly_report,
@@ -92,8 +92,11 @@ async def post_init(application: Application) -> None:
 
 def main() -> None:
     """Start the bot."""
-    # Create the Application
-    application = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
+    # Create the Application builder
+    builder = Application.builder().token(BOT_TOKEN).post_init(post_init)
+    
+    
+    application = builder.build()
 
     # Create conversation handler
     conv_handler = ConversationHandler(
@@ -104,11 +107,11 @@ def main() -> None:
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_verification)
             ],
             MAIN_MENU: [
-                CommandHandler("کارت", handle_card_number),
-                CommandHandler("لینک", handle_donation_link),
-                CommandHandler("مبلغ", handle_donation_amount),
-                CommandHandler("آپلود", handle_payment_upload),
-                CommandHandler("سابقه", handle_payment_history),
+                CommandHandler("card", handle_card_number),
+                CommandHandler("link", handle_donation_link),
+                CommandHandler("amount", handle_donation_amount),
+                CommandHandler("upload", handle_payment_upload),
+                CommandHandler("history", handle_payment_history),
                 CommandHandler("cancel", cancel),
                 MessageHandler(filters.TEXT, show_main_menu),
             ],

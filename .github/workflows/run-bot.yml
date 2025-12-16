@@ -1,0 +1,41 @@
+name: Run Bot
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  schedule:
+    # Run daily at 9:00 UTC
+    - cron: '0 9 * * *'
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run bot
+      env:
+        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+        ADMIN_CHAT_ID: ${{ secrets.ADMIN_CHAT_ID }}
+        DATABASE_PATH: ./aharar_bot.db
+        SEED_DATA_PATH: ./data/seed_data.csv
+        TIMEZONE: Asia/Tehran
+      run: |
+        # Create directories
+        mkdir -p payments reports
+        
+        # Run the bot
+        timeout 300 python main.py || true
