@@ -142,10 +142,11 @@ async def show_main_menu(
         "/upload - آپلود فیش واریزی\n"
         "/history - سابقه پرداخت‌های من"
     )
+    # Use slash commands so pressing buttons triggers CommandHandlers
     reply_keyboard = [
-        ["کارت", "لینک"],
-        ["مبلغ", "آپلود"],
-        ["سابقه"],
+        ["/card", "/link"],
+        ["/amount", "/upload"],
+        ["/history"],
     ]
     await update.message.reply_text(
         menu_text,
@@ -199,22 +200,37 @@ async def handle_donation_amount(
 
 async def handle_payment_upload(
     update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
-    """Handle payment image upload."""
+) -> int | None:
+    """Handle payment image upload.
+
+    Supports both `/upload` command (prompts for a photo) and direct photo
+    messages (process immediately) from verified users.
+    """
     telegram_id = update.effective_user.id
     user = db.get_user_by_telegram_id(telegram_id)
 
     if not user:
         await update.message.reply_text("کاربری یافت نشد.")
-        return
+        return MAIN_MENU
 
+    # If command invoked without a photo, prompt user to send one
     if not update.message.photo:
+        # mark waiting state for next photo (optional)
+        context.user_data["awaiting_photo"] = True
         await update.message.reply_text("لطفا یک تصویر ارسال کنید.")
-        return
+        return MAIN_MENU
+
+    # If a photo is provided (directly or after prompt), process it
+    # Clear awaiting flag
+    context.user_data.pop("awaiting_photo", None)
 
     # Get the highest quality photo
     photo = update.message.photo[-1]
     file = await context.bot.get_file(photo.file_id)
+
+    # Ensure payments directory exists
+    import os
+    os.makedirs("payments", exist_ok=True)
 
     # Save photo
     file_path = f"payments/{user['id']}_{photo.file_id}.jpg"
@@ -224,7 +240,14 @@ async def handle_payment_upload(
     j_m, j_y = JalaliCalendar.get_current_jalali_month_year()
     payment_id = db.create_payment(user["id"], j_m, j_y, PaymentStatus.PENDING)
 
-    # Notify admin
+    # Notify admin (ensure ADMIN_CHAT_ID is configured)
+    if not ADMIN_CHAT_ID or ADMIN_CHAT_ID == 0:
+        logger.error("ADMIN_CHAT_ID not configured; cannot notify admin of payment %s", payment_id)
+        await update.message.reply_text(
+            "تصویر با موفقیت ارسال شد؛ اما ادمین پیکربندی نشده است. لطفا صبور باشید."
+        )
+        return MAIN_MENU
+
     admin_msg = (
         f"پرداخت جدید برای تأیید:\n\n"
         f"نام: {user['full_name']}\n"
@@ -253,6 +276,8 @@ async def handle_payment_upload(
     await update.message.reply_text(
         "تصویر شما با موفقیت ارسال شد.\nانتظار تأیید مدیر..."
     )
+
+    return MAIN_MENU
 
 
 async def handle_payment_history(

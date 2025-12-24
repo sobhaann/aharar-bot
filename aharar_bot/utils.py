@@ -178,9 +178,9 @@ class MessageFormatter:
             f"شماره کارت خیریه (با لمس کردن کپی می شود): {card_number}\n"
             f"لینک پرداخت: {donation_link}\n"
             f"مبلغ تعهد من: {amount}\n"
-            f"آپلود فیش واریزی: /آپلود\n"
-            f"سابقه من: /سابقه\n"
-            f"آخرین گزارش خیریه: /گزارش"
+            f"آپلود فیش واریزی: /upload\n"
+            f"سابقه من: /history\n"
+            f"آخرین گزارش خیریه: /report"
         )
 
     @staticmethod

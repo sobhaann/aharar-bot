@@ -129,6 +129,9 @@ def main() -> None:
     application.add_handler(conv_handler)
     application.add_handler(CallbackQueryHandler(handle_callback_query))
 
+    # Accept photos directly from verified users (also supports /upload flow)
+    application.add_handler(MessageHandler(filters.PHOTO, handle_payment_upload))
+
     # Start the Bot
     application.run_polling()
 
