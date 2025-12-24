@@ -71,6 +71,12 @@ async def post_init(application: Application) -> None:
     """Post initialization tasks."""
     job_queue: JobQueue = application.job_queue
 
+    if job_queue is None:
+        logger.warning(
+            "JobQueue is not available. To enable scheduled tasks, install the job-queue extras: pip install \"python-telegram-bot[job-queue]\" and rebuild the image."
+        )
+        return
+
     # Schedule notification on 3rd of each month at 9:00 AM
     job_queue.run_daily(
         send_donation_notification,

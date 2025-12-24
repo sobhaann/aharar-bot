@@ -84,7 +84,11 @@ class Database:
         self.seed_users()
 
     def seed_users(self) -> None:
-        """Seed users from CSV file."""
+        """Seed users from CSV file.
+
+        This normalizes CSV header names (stripping whitespace) so imperfect CSV
+        headers like "pin-code " still work.
+        """
         cursor = self.conn.cursor()
 
         # Check if users already exist
@@ -95,15 +99,19 @@ class Database:
         # Read CSV file
         csv_path = Path(SEED_DATA_PATH)
         if not csv_path.exists():
+            logger.info("Seed CSV not found at %s, skipping seeding.", csv_path)
             return
 
         with open(csv_path, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                pin_code = row.get("pin-code", "").strip()
-                full_name = row.get("full name", "").strip()
-                amount = row.get("amount", "").strip()
-                donation_link = row.get("donation link", "").strip()
+                # normalize keys by stripping whitespace
+                normalized = { (k.strip() if k else ""): (v or "").strip() for k, v in row.items() }
+
+                pin_code = normalized.get("pin-code", "")
+                full_name = normalized.get("full name", "")
+                amount = normalized.get("amount", "")
+                donation_link = normalized.get("donation link", "")
 
                 if pin_code and full_name:
                     cursor.execute(
