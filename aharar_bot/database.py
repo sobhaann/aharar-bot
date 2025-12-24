@@ -105,13 +105,18 @@ class Database:
         with open(csv_path, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                # normalize keys by stripping whitespace
-                normalized = { (k.strip() if k else ""): (v or "").strip() for k, v in row.items() }
+                # normalize keys by stripping whitespace and removing BOM if present
+                normalized = { (k.strip().lstrip("\ufeff") if k else ""): (v or "").strip() for k, v in row.items() }
 
                 pin_code = normalized.get("pin-code", "")
                 full_name = normalized.get("full name", "")
                 amount = normalized.get("amount", "")
                 donation_link = normalized.get("donation link", "")
+
+                # Normalize pin before inserting (handles Persian digits, whitespace)
+                from .utils import normalize_pin
+
+                pin_code = normalize_pin(pin_code)
 
                 if pin_code and full_name:
                     cursor.execute(
@@ -132,11 +137,33 @@ class Database:
         self.conn.commit()
 
     def get_user_by_pin(self, pin_code: str) -> Optional[dict]:
-        """Get user by pin code."""
+        """Get user by pin code (normalized).
+
+        Attempts exact normalized match first, then numeric match ignoring leading
+        zeros as a fallback for user convenience.
+        """
+        from .utils import normalize_pin
+
+        normalized_pin = normalize_pin(pin_code)
         cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE pin_code = ?", (pin_code,))
+        cursor.execute("SELECT * FROM users WHERE pin_code = ?", (normalized_pin,))
         row = cursor.fetchone()
-        return dict(row) if row else None
+        if row:
+            return dict(row)
+
+        # Fallback: if normalized pin is numeric, try numeric equality ignoring leading zeros
+        if normalized_pin.isdigit():
+            cursor.execute("SELECT * FROM users")
+            for r in cursor.fetchall():
+                db_pin = (r["pin_code"] or "").strip()
+                if db_pin.isdigit():
+                    try:
+                        if int(db_pin) == int(normalized_pin):
+                            return dict(r)
+                    except ValueError:
+                        continue
+
+        return None
 
     def get_user_by_telegram_id(self, telegram_id: int) -> Optional[dict]:
         """Get user by Telegram ID."""

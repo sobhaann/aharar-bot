@@ -99,6 +99,39 @@ class JalaliCalendar:
         return f"{j_d} {month_name} {j_y}"
 
 
+def normalize_pin(pin: str) -> str:
+    """Normalize PIN/identifier input.
+
+    - Strips whitespace
+    - Replaces Persian and Arabic-Indic numerals with ASCII digits
+    - Removes zero-width spaces and control characters
+    """
+    if not pin:
+        return ""
+
+    # strip and remove zero-width/control characters
+    s = pin.strip()
+    s = s.replace("\u200c", "")  # zero-width non-joiner
+    s = s.replace("\u200b", "")  # zero-width space
+
+    # Maps for Persian and Arabic-Indic digits
+    persian_digits = "۰۱۲۳۴۵۶۷۸۹"
+    arabic_digits = "٠١٢٣٤٥٦٧٨٩"
+
+    result_chars: list[str] = []
+    for ch in s:
+        if ch in persian_digits:
+            result_chars.append(str(persian_digits.index(ch)))
+        elif ch in arabic_digits:
+            result_chars.append(str(arabic_digits.index(ch)))
+        else:
+            result_chars.append(ch)
+
+    normalized = "".join(result_chars)
+    # final strip of whitespace
+    return normalized.strip()
+
+
 class MessageFormatter:
     """Message formatting utilities."""
 

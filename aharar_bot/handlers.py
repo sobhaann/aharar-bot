@@ -48,8 +48,28 @@ async def handle_pin_code(
     """Handle PIN code input."""
     pin_code = update.message.text.strip()
 
-    # Validate pin code
-    user = db.get_user_by_pin(pin_code)
+    # Normalize and validate pin code
+    from .utils import normalize_pin
+
+    normalized = normalize_pin(pin_code)
+    logger.debug("PIN input: %s normalized: %s", pin_code, normalized)
+
+    user = db.get_user_by_pin(normalized)
+
+    # Fallback: if numeric and not found, try matching by numeric value ignoring leading zeros
+    if not user and normalized.isdigit():
+        cursor = db.conn.cursor()
+        cursor.execute("SELECT * FROM users")
+        rows = cursor.fetchall()
+        for row in rows:
+            db_pin = (row["pin_code"] or "").strip()
+            try:
+                if db_pin.isdigit() and int(db_pin) == int(normalized):
+                    user = dict(row)
+                    break
+            except ValueError:
+                continue
+
     if not user:
         await update.message.reply_text(MessageFormatter.format_invalid_pin())
         return PIN_CODE
