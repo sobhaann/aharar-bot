@@ -172,29 +172,27 @@ class Database:
         row = cursor.fetchone()
         return dict(row) if row else None
 
-    def update_user_telegram_id(
-        self, user_id: int, telegram_id: int, status: str = UserStatus.VERIFIED
-    ) -> None:
-        """Update user's Telegram ID and status."""
+    def update_user_telegram_id(self, user_id: int, telegram_id: int) -> None:
+        """Update user's Telegram ID without changing status."""
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            UPDATE users SET telegram_id = ?, status = ?, updated_at = ?
+            UPDATE users SET telegram_id = ?, updated_at = ?
             WHERE id = ?
             """,
-            (telegram_id, status, datetime.now(), user_id),
+            (telegram_id, datetime.now(), user_id),
         )
         self.conn.commit()
 
     def logout_user_by_telegram_id(self, telegram_id: int) -> None:
-        """Logout user: clear telegram_id and set status to UNVERIFIED."""
+        """Logout user: clear telegram_id only (don't modify status)."""
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            UPDATE users SET telegram_id = NULL, status = ?, updated_at = ?
+            UPDATE users SET telegram_id = NULL, updated_at = ?
             WHERE telegram_id = ?
             """,
-            (UserStatus.UNVERIFIED, datetime.now(), telegram_id),
+            (datetime.now(), telegram_id),
         )
         self.conn.commit()
 
@@ -263,10 +261,10 @@ class Database:
         return [dict(row) for row in cursor.fetchall()]
 
     def get_all_verified_users(self) -> list[dict]:
-        """Get all verified users."""
+        """Get all users with a bound Telegram ID (contactable users)."""
         cursor = self.conn.cursor()
         cursor.execute(
-            "SELECT * FROM users WHERE status = ?", (UserStatus.VERIFIED,)
+            "SELECT * FROM users WHERE telegram_id IS NOT NULL"
         )
         return [dict(row) for row in cursor.fetchall()]
 
@@ -322,10 +320,10 @@ class Database:
             FROM users u
             LEFT JOIN payments p ON u.id = p.user_id
                 AND p.jalali_month = ? AND p.jalali_year = ?
-            WHERE u.status = ?
+            WHERE u.telegram_id IS NOT NULL
             ORDER BY u.full_name
             """,
-            (PaymentStatus.PENDING, jalali_month, jalali_year, UserStatus.VERIFIED),
+            (PaymentStatus.PENDING, jalali_month, jalali_year),
         )
 
         rows = cursor.fetchall()

@@ -21,11 +21,6 @@ MAIN_MENU = 2
 db = Database()
 
 
-async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Lightweight ping command for troubleshooting."""
-    await update.message.reply_text("pong")
-
-
 async def log_update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Pre-handler that logs basic info about incoming updates for debugging."""
     try:
@@ -61,17 +56,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.effective_user
     telegram_id = user.id
 
-    # Check if user already verified
+    # Check if user already associated with this Telegram ID
     existing_user = db.get_user_by_telegram_id(telegram_id)
     if existing_user:
-        if existing_user["status"] == UserStatus.VERIFIED:
-            await show_main_menu(update, context)
-            return MAIN_MENU
-        elif existing_user["status"] == UserStatus.PENDING_ADMIN:
-            await update.message.reply_text(
-                "حساب شما در انتظار تأیید مدیر است.\nلطفا بعداً دوباره تلاش کنید."
-            )
-            return ConversationHandler.END
+        # If Telegram ID is already bound, directly show the main menu
+        await show_main_menu(update, context)
+        return MAIN_MENU
 
     # Request PIN code
     await update.message.reply_text(MessageFormatter.format_pin_request())
@@ -140,8 +130,8 @@ async def handle_verification(
         telegram_id = update.effective_user.id
         full_name = context.user_data["full_name"]
 
-        # Update user with Telegram ID
-        db.update_user_telegram_id(user_id, telegram_id, UserStatus.VERIFIED)
+        # Update user with Telegram ID (do not modify status)
+        db.update_user_telegram_id(user_id, telegram_id)
 
         # Send success message
         success_msg = MessageFormatter.format_success_message(
@@ -372,6 +362,43 @@ async def logout(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.clear()
     await update.message.reply_text("شما با موفقیت از حساب خارج شدید.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
+
+
+async def handle_protected_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Dispatch wrapper for user commands that requires the user to be VERIFIED.
+
+    Supported commands: /card, /link, /amount, /upload, /history
+    If user isn't verified, prompts them to run /start and complete verification.
+    """
+    text = (update.message.text or "").strip()
+    if not text.startswith("/"):
+        return
+
+    cmd = text.split()[0].lstrip("/").split("@")[0].lower()
+
+    telegram_id = update.effective_user.id
+    user = db.get_user_by_telegram_id(telegram_id)
+    if not user:
+        await update.message.reply_text(
+            "لطفاً ابتدا با /start وارد شوید و پین خود را وارد کنید تا از دستورات استفاده کنید."
+        )
+        return
+
+    # Map command to existing handlers
+    mapping = {
+        "card": handle_card_number,
+        "link": handle_donation_link,
+        "amount": handle_donation_amount,
+        "upload": handle_payment_upload,
+        "history": handle_payment_history,
+    }
+
+    handler = mapping.get(cmd)
+    if handler:
+        await handler(update, context)
+    else:
+        # Unknown command; do nothing
+        return
 
 
 async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

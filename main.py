@@ -33,7 +33,6 @@ from aharar_bot.handlers import (
     broadcast_command,
     manual_trigger,
     # Debug/admin helpers
-    ping,
     log_update,
     global_error_handler,
     PIN_CODE,
@@ -135,9 +134,6 @@ def main() -> None:
         fallbacks=[CommandHandler("cancel", cancel)],
     )
 
-    # Add a lightweight ping command for quick responsiveness checks
-    application.add_handler(CommandHandler("ping", ping))
-
     # Global pre-handler to log incoming updates (helpful for debugging hangs)
     application.add_handler(MessageHandler(filters.ALL, log_update), group=0)
 
@@ -159,6 +155,13 @@ def main() -> None:
     application.add_handler(CommandHandler("report", report_command))
     application.add_handler(CommandHandler("broadcast", broadcast_command))
     application.add_handler(CommandHandler("manual_trigger", manual_trigger))
+
+    # Register protected user commands globally but enforce verification first
+    application.add_handler(CommandHandler("card", handle_protected_command))
+    application.add_handler(CommandHandler("link", handle_protected_command))
+    application.add_handler(CommandHandler("amount", handle_protected_command))
+    application.add_handler(CommandHandler("upload", handle_protected_command))
+    application.add_handler(CommandHandler("history", handle_protected_command))
 
     # Start the Bot
     application.run_polling()
