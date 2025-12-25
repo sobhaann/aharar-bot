@@ -51,7 +51,7 @@ from aharar_bot.scheduler import (
 # Configure logging
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.DEBUG,
+    level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
 
@@ -129,9 +129,6 @@ def main() -> None:
         },
         fallbacks=[CommandHandler("cancel", cancel)],
     )
-
-    # Global pre-handler to log incoming updates (helpful for debugging hangs)
-    application.add_handler(MessageHandler(filters.ALL, log_update), group=0)
 
     # Global pre-handler for pending admin interactive broadcast messages
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_pending_admin_broadcast), group=0)
