@@ -97,6 +97,7 @@ async def handle_pin_code(
                 continue
 
     if not user:
+        logger.warning("PIN lookup failed for input: %s (normalized: %s)", pin_code, normalized)
         await update.message.reply_text(MessageFormatter.format_invalid_pin())
         return PIN_CODE
 
@@ -502,10 +503,10 @@ async def manual_trigger(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     cmd = context.args[0].lower()
     if cmd == "donation":
-        await send_donation_notification(context)
+        await send_donation_notification(context, bypass_date_check=True)
         await update.message.reply_text("اعلان‌های پرداخت ارسال شد.")
     elif cmd == "reminder":
-        await send_reminder_notification(context)
+        await send_reminder_notification(context, bypass_date_check=True)
         await update.message.reply_text("اعلان‌های یادآوری ارسال شد.")
     elif cmd == "report":
         # Generate and send report immediately (bypass date check)

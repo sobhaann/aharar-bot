@@ -18,13 +18,13 @@ from .utils import JalaliCalendar, MessageFormatter
 db = Database()
 
 
-async def send_donation_notification(context: ContextTypes.DEFAULT_TYPE) -> None:
+async def send_donation_notification(context: ContextTypes.DEFAULT_TYPE, bypass_date_check: bool = False) -> None:
     """Send donation notification on the 3rd of each month."""
     j_m, j_y = JalaliCalendar.get_current_jalali_month_year()
     
-    # Only send if today is the notification day
+    # Only send if today is the notification day (unless bypassed for manual trigger)
     _, _, current_day = JalaliCalendar.get_current_jalali_date()
-    if current_day != NOTIFICATION_DAY:
+    if not bypass_date_check and current_day != NOTIFICATION_DAY:
         return
 
     verified_users = db.get_all_verified_users()
@@ -45,13 +45,13 @@ async def send_donation_notification(context: ContextTypes.DEFAULT_TYPE) -> None
             print(f"Error sending notification to {user['full_name']}: {e}")
 
 
-async def send_reminder_notification(context: ContextTypes.DEFAULT_TYPE) -> None:
+async def send_reminder_notification(context: ContextTypes.DEFAULT_TYPE, bypass_date_check: bool = False) -> None:
     """Send reminder notification for pending payments on the 7th of each month."""
     j_m, j_y = JalaliCalendar.get_current_jalali_month_year()
     
-    # Only send if today is the reminder day
+    # Only send if today is the reminder day (unless bypassed for manual trigger)
     _, _, current_day = JalaliCalendar.get_current_jalali_date()
-    if current_day != REMINDER_DAY:
+    if not bypass_date_check and current_day != REMINDER_DAY:
         return
 
     pending_payments = db.get_pending_payments(j_m, j_y)
