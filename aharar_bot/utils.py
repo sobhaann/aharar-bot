@@ -90,8 +90,8 @@ class MessageFormatter:
             f"{header}"
             f"لینک پرداخت: {donation_link}\n\n"
             f"مبلغ تعهد من: {amount}\n"
-            f"💳 شماره کارت:`۶۲۲۱۰۶۱۲۳۷۷۵۷۰۸۵`\n"
-            f"📃 آپلود فیش واریزی: " + "/upload"
+            f"💳 شماره کارت:" + f"`۶۲۲۱۰۶۱۲۳۷۷۵۷۰۸۵`" + f"\n"
+            f"📃 آپلود فیش واریزی: " + f"/upload"
         )
 
     def format_reminder_message(self, month_name: str, donation_link: str, amount: str) -> str:
@@ -100,7 +100,7 @@ class MessageFormatter:
             f"🔰یادآوری پرداخت {month_name} \n"
             f"لینک پرداخت: {donation_link}\n\n"
             f"مبلغ تعهد من: {amount}\n"
-            f"💳 شماره کارت:`۶۲۲۱۰۶۱۲۳۷۷۵۷۰۸۵`\n"
+            f"💳 شماره کارت:" + f"`۶۲۲۱۰۶۱۲۳۷۷۵۷۰۸۵`" + f"\n"
             f"📃 آپلود فیش واریزی: " + f"/upload"
         )
 
