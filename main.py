@@ -123,7 +123,8 @@ def main() -> None:
                 CommandHandler("upload", handle_payment_upload),
                 CommandHandler("history", handle_payment_history),
                 CommandHandler("cancel", cancel),
-                MessageHandler(filters.TEXT, show_main_menu),
+                # Avoid matching slash commands as plain text; only handle non-command text
+                MessageHandler(filters.TEXT & ~filters.COMMAND, show_main_menu),
             ],
         },
         fallbacks=[CommandHandler("cancel", cancel)],

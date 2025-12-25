@@ -327,11 +327,14 @@ async def logout(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = db.get_user_by_telegram_id(telegram_id)
 
     if not user:
-        await update.message.reply_text("شما در سیستم وارد نشده‌اید.")
+        # Use reply_markup to ensure this is sent as a reply; handle clients that don't support reply_text return value
+        await update.message.reply_text("شما در سیستم وارد نشده‌اید.", reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
 
     db.logout_user_by_telegram_id(telegram_id)
-    await update.message.reply_text("شما با موفقیت از حساب خارج شدید.")
+    # Clear any per-user session data and remove keyboard
+    context.user_data.clear()
+    await update.message.reply_text("شما با موفقیت از حساب خارج شدید.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 
