@@ -8,6 +8,7 @@ from .database import Database
 from .config import UserStatus, PaymentStatus, ADMIN_CHAT_ID
 from .models import UserModel
 from .utils import MessageFormatter, JalaliCalendar
+from .scheduler import send_donation_notification, send_reminder_notification
 import logging
 
 logger = logging.getLogger(__name__)
@@ -18,6 +19,41 @@ VERIFICATION = 1
 MAIN_MENU = 2
 
 db = Database()
+
+
+async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Lightweight ping command for troubleshooting."""
+    await update.message.reply_text("pong")
+
+
+async def log_update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Pre-handler that logs basic info about incoming updates for debugging."""
+    try:
+        uid = update.effective_user.id if update.effective_user else None
+        uname = update.effective_user.username if update.effective_user else None
+        if update.message and update.message.text:
+            logger.debug("Incoming update from %s (%s): %s", uid, uname, update.message.text)
+        elif update.callback_query:
+            logger.debug("Callback query from %s (%s): %s", uid, uname, update.callback_query.data)
+        else:
+            logger.debug("Incoming update (no text) from %s (%s): %s", uid, uname, update)
+    except Exception:
+        logger.exception("Error while logging update")
+
+
+async def global_error_handler(update: Optional[Update], context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Global error handler that logs exceptions and notifies the admin (if configured)."""
+    try:
+        logger.exception("Unhandled exception in update: %s", context.error)
+    except Exception:
+        logger.exception("Error while logging unhandled exception")
+
+    # Try to notify admin with a short message
+    try:
+        if ADMIN_CHAT_ID and ADMIN_CHAT_ID != 0:
+            await context.bot.send_message(ADMIN_CHAT_ID, f"یک خطای داخلی رخ داد: {context.error}")
+    except Exception:
+        logger.exception("Failed to notify admin about the error")
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
