@@ -26,6 +26,7 @@ from aharar_bot.handlers import (
     handle_donation_amount,
     handle_payment_upload,
     handle_payment_history,
+    handle_pending_admin_broadcast,
     cancel,
     logout,
     report_command,
