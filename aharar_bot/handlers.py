@@ -78,7 +78,7 @@ async def handle_pin_code(
     from .utils import normalize_pin
 
     normalized = normalize_pin(pin_code)
-    logger.debug("PIN input: %s normalized: %s", pin_code, normalized)
+    logger.info("PIN input: '%s' → normalized: '%s'", pin_code, normalized)
 
     user = db.get_user_by_pin(normalized)
 
