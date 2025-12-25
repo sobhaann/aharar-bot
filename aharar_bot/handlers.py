@@ -404,7 +404,10 @@ async def handle_protected_command(update: Update, context: ContextTypes.DEFAULT
 
 async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Admin command to view current month's payment statuses."""
-    if update.effective_user.id != ADMIN_CHAT_ID:
+    user_id = update.effective_user.id
+    logger.info("report_command: user_id=%s, ADMIN_CHAT_ID=%s, match=%s", user_id, ADMIN_CHAT_ID, user_id == ADMIN_CHAT_ID)
+    
+    if user_id != ADMIN_CHAT_ID:
         await update.message.reply_text("فقط ادمین می‌تواند این دستور را اجرا کند.")
         return
 
