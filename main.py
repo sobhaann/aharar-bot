@@ -123,6 +123,8 @@ def main() -> None:
             ],
             MAIN_MENU: [
                 CommandHandler("cancel", cancel),
+                # Catch pending broadcast messages in interactive mode
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_pending_admin_broadcast),
                 # Avoid matching slash commands as plain text; only handle non-command text
                 MessageHandler(filters.TEXT & ~filters.COMMAND, show_main_menu),
             ],
@@ -130,8 +132,8 @@ def main() -> None:
         fallbacks=[CommandHandler("cancel", cancel)],
     )
 
-    # Global pre-handler for pending admin interactive broadcast messages
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_pending_admin_broadcast), group=0)
+    # Global pre-handler for pending admin interactive broadcast messages (moved inside MAIN_MENU to avoid blocking PIN entry)
+    # Removed from group 0 to avoid interfering with conversation states
 
     # Add handlers
     application.add_handler(conv_handler)
