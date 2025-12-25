@@ -85,22 +85,24 @@ class MessageFormatter:
         full_name: str, amount: str, donation_link: str, month_name: str | None = None
     ) -> str:
         """Format donation reminder message. Optionally include month name."""
+        card_number = "۶۲۲۱۰۶۱۲۳۷۷۵۷۰۸۵"
         header = f"🔰یادآوری پرداخت {month_name}\n\n" if month_name else "🔰یادآوری پرداخت\n\n"
         return (
             f"{header}"
             f"لینک پرداخت: {donation_link}\n\n"
             f"مبلغ تعهد من: {amount}\n"
-            f"💳 شماره کارت:" + f"`۶۲۲۱۰۶۱۲۳۷۷۵۷۰۸۵`" + f"\n"
+            f"💳 شماره کارت:" + f"`{card_number}`" + "\n"
             f"📃 آپلود فیش واریزی: " + f"/upload"
         )
 
     def format_reminder_message(self, month_name: str, donation_link: str, amount: str) -> str:
         """Format a reminder message with the exact requested layout."""
+        card_number = "۶۲۲۱۰۶۱۲۳۷۷۵۷۰۸۵"
         return (
             f"🔰یادآوری پرداخت {month_name} \n"
             f"لینک پرداخت: {donation_link}\n\n"
             f"مبلغ تعهد من: {amount}\n"
-            f"💳 شماره کارت:" + f"`۶۲۲۱۰۶۱۲۳۷۷۵۷۰۸۵`" + f"\n"
+            f"💳 شماره کارت:" + f"`{card_number}`" + "\n"
             f"📃 آپلود فیش واریزی: " + f"/upload"
         )
 
