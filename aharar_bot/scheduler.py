@@ -12,7 +12,7 @@ from reportlab.lib import colors
 from telegram.ext import ContextTypes
 
 from .database import Database
-from .config import TIMEZONE, NOTIFICATION_DAY, REMINDER_DAY, REPORT_DAY, UserStatus, PaymentStatus, ADMIN_CHAT_ID
+from .config import TIMEZONE, NOTIFICATION_DAY, REMINDER_DAY, REPORT_DAY, UserStatus, PaymentStatus, ADMIN_CHAT_ID, JALALI_MONTHS
 from .utils import JalaliCalendar, MessageFormatter
 
 db = Database()
