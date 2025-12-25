@@ -321,6 +321,111 @@ async def handle_payment_history(
     await update.message.reply_text(history_text)
 
 
+async def logout(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Logout the current user (disassociate Telegram ID)."""
+    telegram_id = update.effective_user.id
+    user = db.get_user_by_telegram_id(telegram_id)
+
+    if not user:
+        await update.message.reply_text("شما در سیستم وارد نشده‌اید.")
+        return ConversationHandler.END
+
+    db.logout_user_by_telegram_id(telegram_id)
+    await update.message.reply_text("شما با موفقیت از حساب خارج شدید.")
+    return ConversationHandler.END
+
+
+async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Admin command to view current month's payment statuses."""
+    if update.effective_user.id != ADMIN_CHAT_ID:
+        await update.message.reply_text("فقط ادمین می‌تواند این دستور را اجرا کند.")
+        return
+
+    j_m, j_y = JalaliCalendar.get_current_jalali_month_year()
+    summary = db.get_monthly_summary(j_m, j_y)
+
+    msg_lines = [f"گزارش ماه {j_m} سال {j_y}:\n"]
+    for row in summary["data"]:
+        status = row.get("payment_status")
+        emoji = "✅" if status == PaymentStatus.APPROVED else "❌"
+        msg_lines.append(f"{emoji} {row['full_name']} — {row['donation_amount']}")
+
+    await update.message.reply_text("\n".join(msg_lines))
+
+
+async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Admin command to broadcast a message to all verified users.
+
+    Usage: /broadcast This is the message
+    """
+    if update.effective_user.id != ADMIN_CHAT_ID:
+        await update.message.reply_text("فقط ادمین می‌تواند این دستور را اجرا کند.")
+        return
+
+    text = " ".join(context.args)
+    if not text:
+        await update.message.reply_text("استفاده: /broadcast پیام شما")
+        return
+
+    users = db.get_all_verified_users()
+    sent = 0
+    for user in users:
+        if not user.get("telegram_id"):
+            continue
+        try:
+            await context.bot.send_message(user["telegram_id"], text)
+            sent += 1
+        except Exception as e:
+            logger.error("Failed to send broadcast to %s: %s", user['full_name'], e)
+
+    await update.message.reply_text(f"پیام شما به {sent} کاربر ارسال شد.")
+
+
+async def manual_trigger(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Admin command to manually trigger scheduled tasks.
+
+    Usage: /manual_trigger donation|reminder|report
+    """
+    if update.effective_user.id != ADMIN_CHAT_ID:
+        await update.message.reply_text("فقط ادمین می‌تواند این دستور را اجرا کند.")
+        return
+
+    if not context.args:
+        await update.message.reply_text("استفاده: /manual_trigger donation|reminder|report")
+        return
+
+    cmd = context.args[0].lower()
+    if cmd == "donation":
+        await send_donation_notification(context)
+        await update.message.reply_text("اعلان‌های پرداخت ارسال شد.")
+    elif cmd == "reminder":
+        await send_reminder_notification(context)
+        await update.message.reply_text("اعلان‌های یادآوری ارسال شد.")
+    elif cmd == "report":
+        # Generate and send report immediately (bypass date check)
+        j_m, j_y = JalaliCalendar.get_current_jalali_month_year()
+        summary = db.get_monthly_summary(j_m, j_y)
+        from .scheduler import create_excel_report, create_pdf_report
+
+        excel_path = await create_excel_report(summary)
+        pdf_path = await create_pdf_report(summary)
+
+        try:
+            with open(excel_path, "rb") as excel_file:
+                await context.bot.send_document(ADMIN_CHAT_ID, excel_file, filename=f"گزارش_ماه_{j_m}_{j_y}.xlsx")
+            with open(pdf_path, "rb") as pdf_file:
+                await context.bot.send_document(ADMIN_CHAT_ID, pdf_file, filename=f"گزارش_ماه_{j_m}_{j_y}.pdf")
+            await update.message.reply_text("گزارش ماهانه ارسال شد.")
+        finally:
+            import os
+            if os.path.exists(excel_path):
+                os.remove(excel_path)
+            if os.path.exists(pdf_path):
+                os.remove(pdf_path)
+    else:
+        await update.message.reply_text("گزینه نامعتبر. از donation|reminder|report استفاده کنید.")
+
+
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Cancel handler."""
     await update.message.reply_text(

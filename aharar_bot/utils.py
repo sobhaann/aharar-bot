@@ -6,89 +6,34 @@ import pytz
 from .config import TIMEZONE, JALALI_MONTHS
 
 
+import jdatetime
+
 class JalaliCalendar:
-    """Jalali (Persian) calendar utilities."""
+    """Jalali (Persian) calendar utilities using jdatetime."""
 
     @staticmethod
     def gregorian_to_jalali(gregorian_date: datetime) -> tuple[int, int, int]:
-        """
-        Convert Gregorian date to Jalali date.
-
-        Args:
-            gregorian_date: Gregorian date
-
-        Returns:
-            Tuple of (year, month, day) in Jalali calendar
-        """
-        g_y, g_m, g_d = gregorian_date.year, gregorian_date.month, gregorian_date.day
-
-        if g_m > 2:
-            j_y = g_y + 621
-        else:
-            j_y = g_y + 620
-
-        if g_m > 2:
-            g_m -= 3
-        else:
-            g_m += 9
-
-        g_d += (g_m // 11) * 30 + (g_m % 11) * 31 - 6
-        j_m = (g_d - 1) // 31 + 1
-        j_d = (g_d - 1) % 31 + 1
-
-        if j_d < 1:
-            j_d = 31
-            j_m -= 1
-        if j_m < 1:
-            j_m = 12
-            j_y -= 1
-
-        return j_y, j_m, j_d
+        """Convert Gregorian datetime to Jalali (j_y, j_m, j_d)."""
+        jd = jdatetime.datetime.fromgregorian(datetime=gregorian_date)
+        return jd.year, jd.month, jd.day
 
     @staticmethod
     def jalali_to_gregorian(j_y: int, j_m: int, j_d: int) -> datetime:
-        """
-        Convert Jalali date to Gregorian date.
-
-        Args:
-            j_y: Jalali year
-            j_m: Jalali month
-            j_d: Jalali day
-
-        Returns:
-            Gregorian datetime object
-        """
-        if j_m < 7:
-            g_m = j_m + 9
-            g_y = j_y - 622
-        else:
-            g_m = j_m - 3
-            g_y = j_y - 621
-
-        g_d = j_d + ((j_m - 1) // 7) * 31 + (j_m % 7) * 30 + 5
-
-        if g_m > 2:
-            g_d += 30 + 31 - 1
-        else:
-            g_d -= 1
-
-        if g_m > 2:
-            g_m -= 3
-        else:
-            g_m += 9
-
-        return datetime(g_y, (g_d - 1) // 30 + 1, (g_d - 1) % 30 + 1)
+        """Convert Jalali date to Gregorian datetime."""
+        jd = jdatetime.date(j_y, j_m, j_d)
+        gd = jd.togregorian()
+        return datetime(gd.year, gd.month, gd.day)
 
     @staticmethod
     def get_current_jalali_date() -> tuple[int, int, int]:
-        """Get current date in Jalali calendar."""
+        """Get current date in Jalali calendar (year, month, day)."""
         tz = pytz.timezone(TIMEZONE)
         now = datetime.now(tz)
         return JalaliCalendar.gregorian_to_jalali(now)
 
     @staticmethod
     def get_current_jalali_month_year() -> tuple[int, int]:
-        """Get current month and year in Jalali calendar."""
+        """Get current month and year in Jalali calendar (month, year)."""
         j_y, j_m, _ = JalaliCalendar.get_current_jalali_date()
         return j_m, j_y
 
@@ -175,12 +120,6 @@ class MessageFormatter:
         """Format success message after verification."""
         return (
             "اطلاعات شما با موفقیت ثبت شد\n\n"
-            f"شماره کارت خیریه (با لمس کردن کپی می شود): {card_number}\n"
-            f"لینک پرداخت: {donation_link}\n"
-            f"مبلغ تعهد من: {amount}\n"
-            f"آپلود فیش واریزی: /upload\n"
-            f"سابقه من: /history\n"
-            f"آخرین گزارش خیریه: /report"
         )
 
     @staticmethod

@@ -186,6 +186,18 @@ class Database:
         )
         self.conn.commit()
 
+    def logout_user_by_telegram_id(self, telegram_id: int) -> None:
+        """Logout user: clear telegram_id and set status to UNVERIFIED."""
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """
+            UPDATE users SET telegram_id = NULL, status = ?, updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (UserStatus.UNVERIFIED, datetime.now(), telegram_id),
+        )
+        self.conn.commit()
+
     def get_user_by_id(self, user_id: int) -> Optional[dict]:
         """Get user by ID."""
         cursor = self.conn.cursor()

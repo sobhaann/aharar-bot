@@ -4,3 +4,4 @@ pydantic==2.5.0
 pytz==2023.3
 openpyxl==3.1.5
 reportlab==4.0.9
+jdatetime==5.2.0

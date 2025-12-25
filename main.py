@@ -27,6 +27,10 @@ from aharar_bot.handlers import (
     handle_payment_upload,
     handle_payment_history,
     cancel,
+    logout,
+    report_command,
+    broadcast_command,
+    manual_trigger,
     PIN_CODE,
     VERIFICATION,
     MAIN_MENU,
@@ -131,6 +135,12 @@ def main() -> None:
 
     # Accept photos directly from verified users (also supports /upload flow)
     application.add_handler(MessageHandler(filters.PHOTO, handle_payment_upload))
+
+    # Admin and utility commands
+    application.add_handler(CommandHandler("logout", logout))
+    application.add_handler(CommandHandler("report", report_command))
+    application.add_handler(CommandHandler("broadcast", broadcast_command))
+    application.add_handler(CommandHandler("manual_trigger", manual_trigger))
 
     # Start the Bot
     application.run_polling()
