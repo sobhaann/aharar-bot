@@ -122,11 +122,6 @@ def main() -> None:
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_verification)
             ],
             MAIN_MENU: [
-                CommandHandler("card", handle_card_number),
-                CommandHandler("link", handle_donation_link),
-                CommandHandler("amount", handle_donation_amount),
-                CommandHandler("upload", handle_payment_upload),
-                CommandHandler("history", handle_payment_history),
                 CommandHandler("cancel", cancel),
                 # Avoid matching slash commands as plain text; only handle non-command text
                 MessageHandler(filters.TEXT & ~filters.COMMAND, show_main_menu),
