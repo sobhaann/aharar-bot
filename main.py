@@ -122,6 +122,7 @@ def main() -> None:
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_verification)
             ],
             MAIN_MENU: [
+                CommandHandler("start", start),
                 CommandHandler("cancel", cancel),
                 # Catch pending broadcast messages in interactive mode
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_pending_admin_broadcast),
