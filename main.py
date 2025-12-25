@@ -130,6 +130,9 @@ def main() -> None:
         fallbacks=[CommandHandler("cancel", cancel)],
     )
 
+    # Global pre-handler for pending admin interactive broadcast messages
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_pending_admin_broadcast), group=0)
+
     # Add handlers
     application.add_handler(conv_handler)
     application.add_handler(CallbackQueryHandler(handle_callback_query))

@@ -360,6 +360,8 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     """Admin command to broadcast a message to all verified users.
 
     Usage: /broadcast This is the message
+    If no message is provided, the bot will prompt the admin to send the
+    broadcast message in the next message (interactive mode).
     """
     if update.effective_user.id != ADMIN_CHAT_ID:
         await update.message.reply_text("فقط ادمین می‌تواند این دستور را اجرا کند.")
@@ -367,7 +369,42 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     text = " ".join(context.args)
     if not text:
-        await update.message.reply_text("استفاده: /broadcast پیام شما")
+        # Enter interactive broadcast mode
+        context.user_data["awaiting_broadcast"] = True
+        await update.message.reply_text(
+            "لطفاً متن پیام را ارسال کنید. ارسال /cancel برای لغو."
+        )
+        return
+
+    # Non-interactive: send immediately
+    users = db.get_all_verified_users()
+    sent = 0
+    for user in users:
+        if not user.get("telegram_id"):
+            continue
+        try:
+            await context.bot.send_message(user["telegram_id"], text)
+            sent += 1
+        except Exception as e:
+            logger.error("Failed to send broadcast to %s: %s", user['full_name'], e)
+
+    await update.message.reply_text(f"پیام شما به {sent} کاربر ارسال شد.")
+
+
+async def handle_pending_admin_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle a pending broadcast message from admin in interactive mode."""
+    if not context.user_data.get("awaiting_broadcast"):
+        # Not in broadcast mode; do nothing and allow other handlers to run
+        return
+
+    # Only admin can send the pending broadcast
+    if update.effective_user.id != ADMIN_CHAT_ID:
+        await update.message.reply_text("فقط ادمین می‌تواند پیام همگانی را ارسال کند.")
+        return
+
+    text = update.message.text.strip()
+    if not text:
+        await update.message.reply_text("متن پیام خالی است، لطفا یک پیام معتبر ارسال کنید یا /cancel بزنید.")
         return
 
     users = db.get_all_verified_users()
@@ -380,6 +417,9 @@ async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             sent += 1
         except Exception as e:
             logger.error("Failed to send broadcast to %s: %s", user['full_name'], e)
+
+    # Clear the awaiting flag
+    context.user_data.pop("awaiting_broadcast", None)
 
     await update.message.reply_text(f"پیام شما به {sent} کاربر ارسال شد.")
 
@@ -431,6 +471,10 @@ async def manual_trigger(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Cancel handler."""
+    # Clear any pending interactive modes
+    context.user_data.pop("awaiting_photo", None)
+    context.user_data.pop("awaiting_broadcast", None)
+
     await update.message.reply_text(
         "عملیات لغو شد.",
         reply_markup=ReplyKeyboardRemove(),
