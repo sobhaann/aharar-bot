@@ -12,6 +12,7 @@ from telegram.ext import (
 )
 from telegram import Update
 from telegram.ext import ContextTypes
+from telegram.request import HTTPXRequest
 import pytz
 from datetime import time
 
@@ -107,9 +108,15 @@ async def post_init(application: Application) -> None:
 
 def main() -> None:
     """Start the bot."""
-    # Create the Application builder
-    builder = Application.builder().token(BOT_TOKEN).post_init(post_init)
+    # Create the Application builder with increased timeouts for unreliable networks
+    request = HTTPXRequest(
+        connect_timeout=20,  # Increased from default 5s
+        read_timeout=20,     # Increased from default 5s
+        write_timeout=20,    # Increased from default 5s
+        pool_timeout=20      # Increased from default 5s
+    )
     
+    builder = Application.builder().token(BOT_TOKEN).request(request).post_init(post_init)
     
     application = builder.build()
 
