@@ -116,8 +116,6 @@ def main() -> None:
         write_timeout=20,    # Write timeout for send operations
         pool_timeout=20,     # Connection pool timeout
     )
-        pool_timeout=20      # Increased from default 5s
-    )
     
     builder = Application.builder().token(BOT_TOKEN).request(request).post_init(post_init)
     
