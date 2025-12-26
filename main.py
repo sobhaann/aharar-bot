@@ -17,6 +17,7 @@ import pytz
 from datetime import time
 
 from aharar_bot.config import BOT_TOKEN, TIMEZONE
+
 from aharar_bot.handlers import (
     start,
     handle_pin_code,
@@ -110,9 +111,11 @@ def main() -> None:
     """Start the bot."""
     # Create the Application builder with increased timeouts for unreliable networks
     request = HTTPXRequest(
-        connect_timeout=20,  # Increased from default 5s
-        read_timeout=20,     # Increased from default 5s
-        write_timeout=20,    # Increased from default 5s
+        connect_timeout=20,  # Initial connection timeout
+        read_timeout=30,     # Long Polling timeout: 30s allows better tolerance for ISP delays
+        write_timeout=20,    # Write timeout for send operations
+        pool_timeout=20,     # Connection pool timeout
+    )
         pool_timeout=20      # Increased from default 5s
     )
     
