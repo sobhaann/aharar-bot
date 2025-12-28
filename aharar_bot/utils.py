@@ -131,7 +131,7 @@ class MessageFormatter:
     ) -> str:
         """Format success message after verification."""
         return (
-            "اطلاعات شما با موفقیت ثبت شد\n\n"
+            "🙏اطلاعات شما با موفقیت ثبت شد\nاحتراما وکالت مبالغ واریزی شما با خیریه احرار خواهد بود\n\n"
         )
 
     @staticmethod
