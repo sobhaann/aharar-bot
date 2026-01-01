@@ -327,9 +327,39 @@ class Database:
             """
             SELECT p.* FROM payments p
             WHERE p.jalali_month = ? AND p.jalali_year = ?
-            AND p.status IN (?, ?)
+            AND p.status <> ?
             """,
-            (jalali_month, jalali_year, PaymentStatus.PENDING, PaymentStatus.FAILED),
+            (jalali_month, jalali_year, PaymentStatus.APPROVED),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+    def get_unapproved_users_for_month(
+        self, jalali_month: int, jalali_year: int
+    ) -> list[dict]:
+        """Get users with unapproved payments in a month, excluding those with approved payments.
+        
+        Returns users who have FAILED or PENDING payments in the month,
+        but do NOT have any APPROVED payment in that same month.
+        Used for sending reminder notifications.
+        """
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """
+            SELECT DISTINCT u.* FROM users u
+            WHERE u.telegram_id IS NOT NULL
+            AND u.id IN (
+                SELECT user_id FROM payments
+                WHERE jalali_month = ? AND jalali_year = ?
+                AND status <> ?
+            )
+            AND u.id NOT IN (
+                SELECT user_id FROM payments
+                WHERE jalali_month = ? AND jalali_year = ?
+                AND status = ?
+            )
+            """,
+            (jalali_month, jalali_year, PaymentStatus.APPROVED,
+             jalali_month, jalali_year, PaymentStatus.APPROVED),
         )
         return [dict(row) for row in cursor.fetchall()]
 
