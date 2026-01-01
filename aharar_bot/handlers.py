@@ -323,7 +323,7 @@ async def handle_payment_history(
     cursor = db.conn.cursor()
     cursor.execute(
         """
-        SELECT jalali_day, jalali_month, status FROM payments
+        SELECT jalali_day, jalali_month, jalali_year, status FROM payments
         WHERE user_id = ?
         ORDER BY jalali_year DESC, jalali_month DESC, jalali_day DESC
         """,
@@ -337,12 +337,12 @@ async def handle_payment_history(
 
     history_text = "سابقه پرداخت‌های من:\n\n"
     for payment in payments:
-        day_month = JalaliCalendar.format_jalali_month_year(payment[1], payment[0], payment[0])
+        day_month = JalaliCalendar.format_jalali_month_year(payment[2], payment[1], payment[0])
         status_text = {
             PaymentStatus.APPROVED: "✅ تأیید شده",
             PaymentStatus.PENDING: "⏳ در انتظار",
             PaymentStatus.FAILED: "❌ رد شده",
-        }.get(payment[2], "نامشخص")
+        }.get(payment[3], "نامشخص")
 
         history_text += f"{day_month}: {status_text}\n"
 
