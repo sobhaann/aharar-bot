@@ -5,12 +5,18 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 import csv
+import logging
 
 from .config import DATABASE_PATH, SEED_DATA_PATH, PaymentStatus, UserStatus
 
+logger = logging.getLogger(__name__)
+
 
 class Database:
-    """Database management class."""
+    """Database management class with migration support."""
+
+    # Schema version - increment this when making breaking schema changes
+    SCHEMA_VERSION = 1
 
     def __init__(self, db_path: str = DATABASE_PATH) -> None:
         """Initialize database connection."""
@@ -28,8 +34,68 @@ class Database:
         if self.conn:
             self.conn.close()
 
+    def _ensure_schema_version_table(self) -> None:
+        """Ensure the schema_version table exists."""
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS schema_version (
+                id INTEGER PRIMARY KEY,
+                version INTEGER NOT NULL
+            )
+            """
+        )
+        self.conn.commit()
+
+    def _get_schema_version(self) -> int:
+        """Get the current schema version from the database."""
+        cursor = self.conn.cursor()
+        try:
+            cursor.execute("SELECT version FROM schema_version ORDER BY version DESC LIMIT 1")
+            row = cursor.fetchone()
+            return row[0] if row else 0
+        except sqlite3.OperationalError:
+            return 0
+
+    def _set_schema_version(self, version: int) -> None:
+        """Update the schema version in the database."""
+        cursor = self.conn.cursor()
+        cursor.execute("INSERT INTO schema_version (version) VALUES (?)", (version,))
+        self.conn.commit()
+
+    def _migrate_to_version_1(self) -> None:
+        """Migrate schema to version 1: Add jalali_day column to payments table."""
+        cursor = self.conn.cursor()
+        
+        # Check if jalali_day column already exists
+        cursor.execute("PRAGMA table_info(payments)")
+        columns = [col[1] for col in cursor.fetchall()]
+        
+        if "jalali_day" not in columns:
+            logger.info("Migrating: Adding jalali_day column to payments table...")
+            try:
+                cursor.execute(
+                    "ALTER TABLE payments ADD COLUMN jalali_day INTEGER DEFAULT 1"
+                )
+                self.conn.commit()
+                logger.info("Successfully added jalali_day column to payments table")
+            except sqlite3.OperationalError as e:
+                logger.error("Failed to add jalali_day column: %s", e)
+                raise
+
+    def _run_migrations(self) -> None:
+        """Run any pending schema migrations."""
+        self._ensure_schema_version_table()
+        current_version = self._get_schema_version()
+        
+        if current_version < 1:
+            logger.info("Running migration to version 1...")
+            self._migrate_to_version_1()
+            self._set_schema_version(1)
+            logger.info("Migration to version 1 complete")
+
     def init_db(self) -> None:
-        """Initialize database tables."""
+        """Initialize database tables and run migrations."""
         self.connect()
         cursor = self.conn.cursor()
 
@@ -56,6 +122,7 @@ class Database:
             CREATE TABLE IF NOT EXISTS payments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
+                jalali_day INTEGER NOT NULL DEFAULT 1,
                 jalali_month INTEGER NOT NULL,
                 jalali_year INTEGER NOT NULL,
                 status TEXT DEFAULT '{PaymentStatus.PENDING}',
@@ -81,6 +148,11 @@ class Database:
         )
 
         self.conn.commit()
+        
+        # Run migrations
+        self._run_migrations()
+        
+        # Seed users
         self.seed_users()
 
     def seed_users(self) -> None:
@@ -206,6 +278,7 @@ class Database:
     def create_payment(
         self,
         user_id: int,
+        jalali_day: int,
         jalali_month: int,
         jalali_year: int,
         status: str = PaymentStatus.PENDING,
@@ -214,10 +287,10 @@ class Database:
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            INSERT INTO payments (user_id, jalali_month, jalali_year, status)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO payments (user_id, jalali_day, jalali_month, jalali_year, status)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (user_id, jalali_month, jalali_year, status),
+            (user_id, jalali_day, jalali_month, jalali_year, status),
         )
         self.conn.commit()
         return cursor.lastrowid

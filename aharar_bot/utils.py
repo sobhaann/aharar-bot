@@ -43,6 +43,18 @@ class JalaliCalendar:
         month_name = JALALI_MONTHS.get(j_m, "نامشخص")
         return f"{j_d} {month_name} {j_y}"
 
+    @staticmethod
+    def format_jalali_month_year(j_y: int, j_m: int, j_d: int = None) -> str:
+        """Format Jalali month and year as string (without year, or with day).
+        
+        If j_d is provided, returns "day month" format.
+        Otherwise returns "month year" format.
+        """
+        month_name = JALALI_MONTHS.get(j_m, "نامشخص")
+        if j_d is not None:
+            return f"{j_d} {month_name}"
+        return f"{month_name} {j_y}"
+
 
 def normalize_pin(pin: str) -> str:
     """Normalize PIN/identifier input.

@@ -219,7 +219,7 @@ async def handle_donation_amount(
 
     if user:
         await update.message.reply_text(
-            f"مبلغ تعهدی شما: {user['donation_amount']} تومان"
+            f"مبلغ تعهدی شما برای بازه آبان‌ماه تا فروردین‌ماه به شرح زیر میباشد: {user['donation_amount']} تومان"
         )
     else:
         await update.message.reply_text("کاربری یافت نشد.")
@@ -265,7 +265,8 @@ async def handle_payment_upload(
 
     # Create payment record
     j_m, j_y = JalaliCalendar.get_current_jalali_month_year()
-    payment_id = db.create_payment(user["id"], j_m, j_y, PaymentStatus.PENDING)
+    j_d = JalaliCalendar.get_current_jalali_date()[2]  # Get day
+    payment_id = db.create_payment(user["id"], j_d, j_m, j_y, PaymentStatus.PENDING)
 
     # Notify admin (ensure ADMIN_CHAT_ID is configured)
     if not ADMIN_CHAT_ID or ADMIN_CHAT_ID == 0:
@@ -322,9 +323,9 @@ async def handle_payment_history(
     cursor = db.conn.cursor()
     cursor.execute(
         """
-        SELECT jalali_month, jalali_year, status FROM payments
+        SELECT jalali_day, jalali_month, status FROM payments
         WHERE user_id = ?
-        ORDER BY jalali_year DESC, jalali_month DESC
+        ORDER BY jalali_year DESC, jalali_month DESC, jalali_day DESC
         """,
         (user["id"],),
     )
@@ -336,14 +337,14 @@ async def handle_payment_history(
 
     history_text = "سابقه پرداخت‌های من:\n\n"
     for payment in payments:
-        month_name = JalaliCalendar.format_jalali_date(payment[1], payment[0], 1)
+        day_month = JalaliCalendar.format_jalali_month_year(payment[1], payment[0], payment[0])
         status_text = {
             PaymentStatus.APPROVED: "✅ تأیید شده",
             PaymentStatus.PENDING: "⏳ در انتظار",
             PaymentStatus.FAILED: "❌ رد شده",
         }.get(payment[2], "نامشخص")
 
-        history_text += f"{month_name}: {status_text}\n"
+        history_text += f"{day_month}: {status_text}\n"
 
     await update.message.reply_text(history_text)
 
